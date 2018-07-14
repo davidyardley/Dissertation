@@ -1,0 +1,94 @@
+
+import yt
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+import matplotlib.mlab as mlab
+from math import sqrt
+import random
+
+#print statements with hash before them were used in debugging and not essential to the code
+
+#Function giving random point in simulation box
+def RandomPoint():
+    Point_x = random.randrange(0, 100, 1)
+    Point_y = random.randrange(0, 100, 1)
+    Point_z = random.randrange(0, 100, 1)
+    P = [Point_x, Point_y, Point_z]
+    return P
+
+#Function which loads and analyses data
+def MachNumberCalc( Location, R):
+    #Loading Data
+    sp = ds.sphere(Location, (R, 'Mpc'))
+
+    #Extracting Velocities
+    velocity_x=sp['Group', 'particle_velocity_x'].in_units("km/s")
+    velocity_y=sp['Group', 'particle_velocity_y'].in_units("km/s")
+    velocity_z=sp['Group', 'particle_velocity_z'].in_units("km/s")
+
+    BF_x = np.mean(velocity_x)
+    BF_y = np.mean(velocity_y)
+    BF_z = np.mean(velocity_z)
+
+#Fixes the +/- in the display of the statement of the bulk flow velocity (not needed when printing turned off)
+    plus_minus_x= "+"
+    plus_minus_y= "+"
+    plus_minus_z= "+"
+    if float(BF_x)<0:
+        plus_minus_x= "-"
+        BF_x=-BF_x
+    if float(BF_y)<0:
+        plus_minus_y= "-"
+        BF_y=-BF_y
+    if float(BF_z)<0:
+        plus_minus_z= "-"
+        BF_z=-BF_z
+
+    VD_x = np.std(velocity_x)
+    VD_y = np.std(velocity_y)
+    VD_z = np.std(velocity_z)
+
+    VD_sq = (VD_x)**2 + (VD_y)**2 + (VD_z)**2
+    BF_sq = (BF_x)**2 + (BF_y)**2 + (BF_z)**2
+    MachNumber = sqrt(float(BF_sq)/float(VD_sq))
+
+#    print("Bulk flow velocity = (" + plus_minus_x + str(BF_x) + ")i "+ plus_minus_y +" (" + str(BF_y) + ")j " + plus_minus_z  + " (" + str(BF_z) + ")k")   
+#    print("Velocity dispersion vector = (" + str(VD_x) + ")i + (" + str(VD_y) + ")j + (" + str(VD_z) + ")k")
+#    print("Mach number = " + str(MachNumber))
+    MachList.append(MachNumber)
+
+#Function which ensemble averages all the Mach numbers
+def Ensemble_Average(R_1):
+    for i in  range(0, 1500):
+        Point = RandomPoint()
+#        print("Point " + str(i) + " (R=" + str(R_1) + "Mpc)" + " = " + str(Point))
+        print("n = " + str(i))
+        MachNumberCalc(Point, R_1)
+    FullMachNumber = np.mean(MachList)
+    HaloNumber = len(MachList)
+    Std_Dev = np.std(MachList)
+    M_Error = float(Std_Dev)/sqrt(float(HaloNumber))
+    print("The ensemble averaged Mach number of a spherical region of R=" + str(R_1) + "Mpc is = " + str(FullMachNumber) + " +/- " + str(M_Error))
+    M_R_And_Error = [FullMachNumber, M_Error, R_1]
+    M_R_List.append(M_R_And_Error)
+
+#Loading Data
+ds = yt.load("/disk01/brs/legacy/100Mpc_2048/dm_gadget/data/groups_260/fof_tab_260.9.hdf5")
+
+#Lists containing CMN values and their errors
+M_R_List = []
+MachList = []
+
+#Repeating ensemble averaging for many R values
+for i in range(1, 10):
+    MachList = []
+    j = 10*i
+    Ensemble_Average(j)
+#    print(len(MachList))
+
+#Printing results
+for i in M_R_List:
+    print("The Cosmic Mach Number for a spherical region of radius R = " + str(i[2]) + " is M = " + str(i[0]) + "+/-" + str(i[1]))
